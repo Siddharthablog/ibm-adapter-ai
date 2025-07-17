@@ -6,40 +6,32 @@ import re
 app = FastAPI()
 
 class TextInput(BaseModel):
-    text: str
-    query: Optional[str] = None  # e.g., "01CV450" or "MQ Adapter"
+    text: str  # Required, just like in check-style
 
 class AdapterDetail(BaseModel):
     feature_code: str
     adapter_name: str
     description: str
-    page: Optional[int] = None
 
 class Output(BaseModel):
-    query: Optional[str]
+    original_text: str
     matches: List[AdapterDetail]
 
 @app.post("/search-adapter", response_model=Output)
-async def search_adapter(input: TextInput):
-    text = input.text
-    query = input.query.strip() if input.query else ""
+async def search_adapter(input_text: TextInput):
+    text = input_text.text.strip()
+    matches = []
 
-    # Regular expression to extract adapter entries
+    # Example regex pattern to extract adapter info (simplified)
     adapter_pattern = re.compile(
         r"Feature Code[:\s]+(?P<feature>\w+)\s+Adapter Name[:\s]+(?P<name>.+?)\s+Description[:\s]+(?P<desc>.*?)(?=\nFeature Code|\Z)",
         re.DOTALL
     )
 
-    matches = []
     for match in adapter_pattern.finditer(text):
         feature = match.group("feature").strip()
         name = match.group("name").strip()
         desc = match.group("desc").strip()
-
-        # If user specified a query, filter for it
-        if query:
-            if query.lower() not in feature.lower() and query.lower() not in name.lower():
-                continue
 
         matches.append(AdapterDetail(
             feature_code=feature,
@@ -47,7 +39,4 @@ async def search_adapter(input: TextInput):
             description=desc
         ))
 
-    return {
-        "query": query,
-        "matches": matches
-    }
+    return {"original_text": text, "matches": matches}
